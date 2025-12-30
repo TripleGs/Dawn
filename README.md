@@ -1,16 +1,32 @@
-Things to change:
-- Change the dirt back to how it was, it was a cool idea, but I think it may be better to instead change it backm either that or by not allowing it in caves
-- Add an eraser
-- Change it by adding a way to increase the amount deployed
-- add background color changes for certain conditions (such as caves)
-- move all the content.py json details into thier own individual json files but have it where they are auto loaded so I don't need to do anything and the game will load them up
-- make the registry dynamic (for items and functions)
-- move all the functions into seperate files that way they can be loaded up dynamically
-- break up the different parts of main
-- add goblins (modeled off of giant ants)
-- add vines
-- add animals
-- add minerals and metals
-- randomly rotate the block formattion to add textures to the world 
+# Dawn - Falling Sand Sandbox
 
+Dawn is a pixel-based falling sand simulation game built with Python and Pygame. It features a physics-based environment where you can paint with various materials (elements) and watch them interact.
 
+## Features
+- **Physics Simulation**: Granular physics for elements like sand, water, and gases.
+- **Material Interactions**: Complex interactions between different elements (e.g., density-based movement, phase changes).
+- **Save/Load System**: Multiple save slots to store your worlds.
+- **Dynamic Palette**: Select and search for different materials to play with.
+- **Theme System**: Modern, dark-themed UI.
+
+## Installation
+
+1. **Prerequisites**: Ensure you have Python 3.x installed.
+2. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## How to Run
+
+To start the application, run the `main.py` file from the root directory:
+
+```bash
+python main.py
+```
+
+## Controls
+
+- **Left Mouse Button**: Draw selected material / Interact with UI.
+- **Navigate UI**: Use the palette to select elements.
+- **Save/Load**: detailed save slot management from the main menu.
