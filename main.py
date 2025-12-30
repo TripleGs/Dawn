@@ -116,10 +116,67 @@ def ensure_pygame() -> None:
         pygame.init()
 
 
+def create_app_icon() -> pygame.Surface:
+    """Create a procedural 32x32 pixel art icon for the app."""
+    surface = pygame.Surface((32, 32))
+    surface.fill((20, 20, 24))  # Dark background
+
+    # Colors matched from materials
+    SAND_1 = (222, 205, 150)
+    SAND_2 = (210, 190, 130)
+    WATER_1 = (38, 108, 252)
+    WATER_2 = (60, 140, 255)
+
+    # Draw a little scene
+    # 1. Sand dunes at bottom
+    for x in range(32):
+        # A simple curve: higher on sides
+        h = 8 + int((x - 16)**2 / 20)
+        for y in range(32 - h, 32):
+            color = SAND_1 if (x + y) % 3 == 0 else SAND_2
+            surface.set_at((x, y), color)
+
+    # 2. Water pool in the middle
+    water_level = 22
+    for x in range(4, 28):
+        for y in range(water_level, 32):
+            # Don't overwrite sand
+            if surface.get_at((x, y))[:3] == (20, 20, 24):
+                color = WATER_1 if (x + y) % 2 == 0 else WATER_2
+                surface.set_at((x, y), color)
+
+    # 3. Falling sand particles
+    particles = [(16, 5), (15, 8), (17, 9), (16, 12), (16, 15)]
+    for px, py in particles:
+        surface.set_at((px, py), WATER_1)
+
+    # 4. Apply rounded corners mask
+    mask = pygame.Surface((32, 32), pygame.SRCALPHA)
+    mask.fill((0, 0, 0, 0))
+    pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, 32, 32), border_radius=8)
+
+    final = pygame.Surface((32, 32), pygame.SRCALPHA)
+    final.blit(surface, (0, 0))
+    final.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+    return final
+
+
 def create_surface(world, ui_height: int = UI_ROW_HEIGHT) -> pygame.Surface:
     width = world.width * CELL_SIZE
     height = world.height * CELL_SIZE + ui_height
-    return pygame.display.set_mode((width, height))
+    
+    # Set icon before creating window
+    try:
+        icon = create_app_icon()
+        pygame.display.set_icon(icon)
+    except Exception as e:
+        print(f"Warning: Failed to set icon: {e}")
+
+    screen = pygame.display.set_mode((width, height))
+    pygame.display.set_caption("Dawn: The Rise of Sandbox")
+    return screen
+
 
 
 def _slot_paths() -> dict:
@@ -368,7 +425,7 @@ def draw_main_menu(surface: pygame.Surface, mouse_pos: Tuple[int, int] = (0, 0))
     surface.blit(title, (width // 2 - title.get_width() // 2, title_y))
 
     # Subtitle
-    subtitle = subtitle_font.render("A Falling Sand Sandbox", True, Theme.TEXT_SECONDARY)
+    subtitle = subtitle_font.render("The Rise of Sandbox", True, Theme.TEXT_SECONDARY)
     surface.blit(subtitle, (width // 2 - subtitle.get_width() // 2, title_y + 60))
 
     # Start button - larger and centered

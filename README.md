@@ -1,4 +1,4 @@
-# Dawn - Falling Sand Sandbox
+# Dawn: The Rise of Sandbox
 
 Dawn is a pixel-based falling sand simulation game built with Python and Pygame. It features a physics-based environment where you can paint with various materials (elements) and watch them interact.
 
