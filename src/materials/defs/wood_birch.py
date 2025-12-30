@@ -1,7 +1,7 @@
 SPEC = {'id': 'wood_birch',
  'type': 'solid',
  'density': 1.2,
- 'support': 3,
+ 'support': 1,
  'palette': [(210, 210, 190), (40, 40, 40)],
  'pattern': [[0, 1, 0, 1, 0, 1, 0, 1],
              [0, 1, 0, 1, 0, 1, 0, 1],

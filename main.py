@@ -15,6 +15,101 @@ Color = Tuple[int, int, int]
 CELL_SIZE = 8
 UI_ROW_HEIGHT = 48
 
+# -------- Modern Theme System --------
+class Theme:
+    # Background colors
+    BG_DARK = (18, 18, 24)
+    BG_MEDIUM = (28, 28, 38)
+    BG_LIGHT = (38, 40, 52)
+
+    # Accent colors
+    PRIMARY = (100, 140, 220)
+    PRIMARY_HOVER = (120, 160, 240)
+    PRIMARY_DARK = (70, 100, 180)
+    SECONDARY = (80, 200, 160)
+    SECONDARY_HOVER = (100, 220, 180)
+    DANGER = (220, 80, 80)
+    DANGER_HOVER = (240, 100, 100)
+
+    # Text colors
+    TEXT_PRIMARY = (240, 240, 250)
+    TEXT_SECONDARY = (160, 165, 180)
+    TEXT_DIM = (100, 105, 120)
+
+    # UI element colors
+    PANEL_BG = (32, 34, 44)
+    PANEL_BORDER = (55, 58, 72)
+    INPUT_BG = (22, 24, 32)
+    INPUT_BORDER = (60, 65, 80)
+    INPUT_FOCUS = (100, 140, 220)
+
+    # Button colors
+    BTN_DEFAULT = (50, 54, 68)
+    BTN_HOVER = (65, 70, 88)
+    BTN_PRESSED = (40, 44, 56)
+
+    # Special
+    GLOW = (100, 140, 220, 60)
+    SHADOW = (0, 0, 0, 80)
+
+
+def draw_rounded_rect(surface, color, rect, radius=8, border=0, border_color=None):
+    """Draw a rounded rectangle with optional border."""
+    pygame.draw.rect(surface, color, rect, border_radius=radius)
+    if border > 0 and border_color:
+        pygame.draw.rect(surface, border_color, rect, border, border_radius=radius)
+
+
+def draw_button(surface, rect, text, font, hovered=False, pressed=False, style="default"):
+    """Draw a styled button with hover/press states."""
+    if style == "primary":
+        bg = Theme.PRIMARY_HOVER if hovered else Theme.PRIMARY
+        border_color = Theme.PRIMARY_DARK
+    elif style == "secondary":
+        bg = Theme.SECONDARY_HOVER if hovered else Theme.SECONDARY
+        border_color = (60, 160, 130)
+    elif style == "danger":
+        bg = Theme.DANGER_HOVER if hovered else Theme.DANGER
+        border_color = (180, 60, 60)
+    else:
+        bg = Theme.BTN_HOVER if hovered else Theme.BTN_DEFAULT
+        border_color = Theme.PANEL_BORDER
+
+    if pressed:
+        bg = Theme.BTN_PRESSED
+
+    # Draw button background
+    draw_rounded_rect(surface, bg, rect, radius=6, border=2, border_color=border_color)
+
+    # Draw text centered
+    txt_surf = font.render(text, True, Theme.TEXT_PRIMARY)
+    tx = rect.x + (rect.w - txt_surf.get_width()) // 2
+    ty = rect.y + (rect.h - txt_surf.get_height()) // 2
+    surface.blit(txt_surf, (tx, ty))
+
+    return rect
+
+
+def draw_panel(surface, rect, title=None, title_font=None):
+    """Draw a styled panel with optional title bar."""
+    # Panel shadow (subtle offset)
+    shadow_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.w, rect.h)
+    pygame.draw.rect(surface, (0, 0, 0), shadow_rect, border_radius=10)
+
+    # Main panel
+    draw_rounded_rect(surface, Theme.PANEL_BG, rect, radius=10, border=2, border_color=Theme.PANEL_BORDER)
+
+    if title and title_font:
+        # Title bar
+        title_rect = pygame.Rect(rect.x, rect.y, rect.w, 32)
+        pygame.draw.rect(surface, Theme.BG_LIGHT, title_rect, border_top_left_radius=10, border_top_right_radius=10)
+        pygame.draw.line(surface, Theme.PANEL_BORDER, (rect.x, rect.y + 32), (rect.right, rect.y + 32), 1)
+
+        title_surf = title_font.render(title, True, Theme.TEXT_PRIMARY)
+        surface.blit(title_surf, (rect.x + 12, rect.y + 8))
+        return 32
+    return 0
+
 
 def ensure_pygame() -> None:
     if not pygame.get_init():
@@ -70,98 +165,178 @@ def draw_world(surface: pygame.Surface, world, registry) -> None:
                 pygame.draw.rect(surface, color, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
 
-def draw_palette(surface: pygame.Surface, registry, palette_state: dict) -> None:
+def draw_palette(surface: pygame.Surface, registry, palette_state: dict, mouse_pos: Tuple[int, int] = (0, 0)) -> None:
     rect = palette_state["rect"]
-    title_h = 24
-    search_h = 24
-    pad = 8
-    # Panel background
-    pygame.draw.rect(surface, (36, 36, 42), rect)
-    pygame.draw.rect(surface, (80, 80, 90), rect, 2)
+    title_h = 32
+    search_h = 32
+    pad = 10
+
+    # Panel shadow
+    shadow_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.w, rect.h)
+    pygame.draw.rect(surface, (0, 0, 0, 100), shadow_rect, border_radius=12)
+
+    # Panel background with rounded corners
+    draw_rounded_rect(surface, Theme.PANEL_BG, rect, radius=12, border=2, border_color=Theme.PANEL_BORDER)
+
     # Title bar (drag handle)
     title_rect = pygame.Rect(rect.x, rect.y, rect.w, title_h)
-    pygame.draw.rect(surface, (50, 50, 60), title_rect)
-    title_surf = pygame.font.SysFont(None, 18).render("Palette", True, (230, 230, 240))
-    surface.blit(title_surf, (rect.x + 8, rect.y + 4))
+    pygame.draw.rect(surface, Theme.BG_LIGHT, title_rect, border_top_left_radius=12, border_top_right_radius=12)
+    pygame.draw.line(surface, Theme.PANEL_BORDER, (rect.x, rect.y + title_h), (rect.right, rect.y + title_h), 1)
+
+    # Drag handle dots
+    for i in range(3):
+        dot_x = rect.x + 12 + i * 6
+        pygame.draw.circle(surface, Theme.TEXT_DIM, (dot_x, rect.y + title_h // 2), 2)
+
+    title_font = pygame.font.SysFont(None, 20)
+    title_surf = title_font.render("Materials", True, Theme.TEXT_PRIMARY)
+    surface.blit(title_surf, (rect.x + 36, rect.y + 8))
+
     # Minimize button on title bar
-    min_rect = pygame.Rect(rect.right - 22, rect.y + 4, 16, 16)
-    pygame.draw.rect(surface, (90, 90, 100), min_rect)
+    min_rect = pygame.Rect(rect.right - 28, rect.y + 6, 20, 20)
+    min_hovered = min_rect.collidepoint(mouse_pos)
+    min_bg = Theme.BTN_HOVER if min_hovered else Theme.BTN_DEFAULT
+    draw_rounded_rect(surface, min_bg, min_rect, radius=4)
     minus_y = min_rect.y + min_rect.h // 2
-    pygame.draw.line(surface, (230, 230, 240), (min_rect.x + 3, minus_y), (min_rect.right - 3, minus_y), 2)
-    # Search box
-    search_rect = pygame.Rect(rect.x + pad, rect.y + title_h + 4, rect.w - 2 * pad, search_h)
-    pygame.draw.rect(surface, (26, 26, 32), search_rect)
-    pygame.draw.rect(surface, (80, 80, 90), search_rect, 1)
+    pygame.draw.line(surface, Theme.TEXT_PRIMARY, (min_rect.x + 5, minus_y), (min_rect.right - 5, minus_y), 2)
+
+    # Search box with icon
+    search_rect = pygame.Rect(rect.x + pad, rect.y + title_h + 8, rect.w - 2 * pad, search_h)
+    is_search_active = palette_state.get("input_active", False)
+    search_border = Theme.INPUT_FOCUS if is_search_active else Theme.INPUT_BORDER
+    draw_rounded_rect(surface, Theme.INPUT_BG, search_rect, radius=6, border=1, border_color=search_border)
+
+    # Search icon (magnifying glass)
+    pygame.draw.circle(surface, Theme.TEXT_DIM, (search_rect.x + 14, search_rect.y + 12), 6, 1)
+    pygame.draw.line(surface, Theme.TEXT_DIM, (search_rect.x + 18, search_rect.y + 16),
+                    (search_rect.x + 22, search_rect.y + 20), 1)
+
     search_text = palette_state.get("search", "")
     font = pygame.font.SysFont(None, 18)
-    txt = font.render(search_text or "search...", True, (200, 200, 210) if search_text else (110, 110, 120))
-    surface.blit(txt, (search_rect.x + 6, search_rect.y + 4))
-    # Resize grip (bottom-right)
-    grip = pygame.Rect(rect.right - 12, rect.bottom - 12, 10, 10)
-    pygame.draw.rect(surface, (90, 90, 100), grip)
-    # Content grid
-    content_y = search_rect.bottom + 6
-    content_h = rect.bottom - content_y - 14
+    display_text = search_text if search_text else "Search materials..."
+    text_color = Theme.TEXT_PRIMARY if search_text else Theme.TEXT_DIM
+    txt = font.render(display_text, True, text_color)
+    surface.blit(txt, (search_rect.x + 28, search_rect.y + 8))
+
+    # Resize grip (bottom-right) with better styling
+    grip = pygame.Rect(rect.right - 16, rect.bottom - 16, 14, 14)
+    # Draw diagonal lines for grip
+    for i in range(3):
+        offset = i * 4
+        pygame.draw.line(surface, Theme.TEXT_DIM,
+                        (grip.right - 3 - offset, grip.bottom - 3),
+                        (grip.right - 3, grip.bottom - 3 - offset), 1)
+
+    # Content grid area
+    content_y = search_rect.bottom + 8
+    content_h = rect.bottom - content_y - 18
     content_rect = pygame.Rect(rect.x + pad, content_y, rect.w - 2 * pad, content_h)
-    pygame.draw.rect(surface, (28, 28, 34), content_rect)
-    # Filter items
+    draw_rounded_rect(surface, Theme.BG_DARK, content_rect, radius=8)
+
+    # Filter items - match against key, display name, or behavior name
     q = (search_text or "").lower().strip()
-    items = [i for i in registry.all_items() if (q in i.behavior.display_name.lower() or q in i.key)]
-    # Grid metrics
-    grid_pad = 6
-    cell_w = 56
-    cell_h = 68
-    cols = max(1, (content_rect.w - grid_pad) // cell_w)
+    if q:
+        items = [i for i in registry.all_items()
+                 if q in i.key.lower()
+                 or q in i.behavior.display_name.lower()
+                 or q in getattr(i.behavior, 'name', '').lower()]
+        # Reset scroll when searching
+        palette_state["scroll"] = 0
+    else:
+        items = list(registry.all_items())
+
+    # Grid metrics - larger cells for better visibility
+    grid_pad = 8
+    cell_w = 60
+    cell_h = 72
+    cols = max(1, (content_rect.w - grid_pad * 2) // cell_w)
     start_row = palette_state.get("scroll", 0)
+
     # Draw grid
-    row = 0
-    visible_rows = max(1, (content_rect.h - grid_pad) // cell_h)
+    visible_rows = max(1, (content_rect.h - grid_pad * 2) // cell_h)
     first = start_row * cols
     last = min(len(items), first + visible_rows * cols)
+
     for i in range(first, last):
         rel = i - first
         row = rel // cols
         col = rel % cols
         bx = content_rect.x + grid_pad + col * cell_w
         by = content_rect.y + grid_pad + row * cell_h
-        # Icon (supports multi-color palette/pattern preview)
+
         idef = items[i]
-        # Compute icon size to fit inside cell with padding
-        label_h = 14
-        icon_size = min(40, cell_w - 2 * grid_pad, cell_h - (label_h + 2 + grid_pad))
-        ix = bx + (cell_w - icon_size) // 2
-        iy = by + 2
+        is_selected = palette_state.get("selected_id") == idef.id
+
+        # Item cell background on hover/selection
+        cell_rect = pygame.Rect(bx, by, cell_w - 4, cell_h - 4)
+        if is_selected:
+            draw_rounded_rect(surface, Theme.PRIMARY_DARK, cell_rect, radius=6, border=2, border_color=Theme.PRIMARY)
+        elif cell_rect.collidepoint(mouse_pos):
+            draw_rounded_rect(surface, Theme.BG_LIGHT, cell_rect, radius=6)
+
+        # Icon - centered in cell with room for label below
+        label_h = 16  # Space reserved for label
+        pad = 4  # Padding around icon
+        available_h = cell_rect.h - label_h - pad  # Height available for icon
+        icon_size = min(cell_rect.w - pad * 2, available_h)  # Square icon that fits
+        ix = cell_rect.x + (cell_rect.w - icon_size) // 2  # Center horizontally
+        iy = cell_rect.y + pad  # Top padding
         icon_rect = pygame.Rect(ix, iy, icon_size, icon_size)
+
+        # Draw material icon
         beh = idef.behavior
         pal = getattr(beh, "palette", None)
         pat = getattr(beh, "pattern", None)
+
+        # Create a surface for the icon
+        icon_surface = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
+
         if pal and pat:
-            rows = len(pat)
-            cols_p = len(pat[0]) if rows > 0 else 0
-            if rows > 0 and cols_p > 0:
-                sx = max(1, icon_rect.w // cols_p)
-                sy = max(1, icon_rect.h // rows)
-                for py in range(rows):
+            rows_p = len(pat)
+            cols_p = len(pat[0]) if rows_p > 0 else 0
+            if rows_p > 0 and cols_p > 0:
+                sx = max(1, icon_size // cols_p)
+                sy = max(1, icon_size // rows_p)
+                for py in range(rows_p):
                     prow = pat[py]
                     for px in range(min(cols_p, len(prow))):
                         ci = prow[px]
                         if 0 <= ci < len(pal):
-                            pygame.draw.rect(
-                                surface,
-                                pal[ci],
-                                (icon_rect.x + px * sx, icon_rect.y + py * sy, sx, sy),
-                            )
+                            pygame.draw.rect(icon_surface, pal[ci], (px * sx, py * sy, sx, sy))
             else:
-                pygame.draw.rect(surface, beh.color, icon_rect)
+                icon_surface.fill(beh.color)
         else:
-            pygame.draw.rect(surface, beh.color, icon_rect)
-        # Label centered in cell
-        label_surf = pygame.font.SysFont(None, 14).render(idef.behavior.display_name, True, (220, 220, 230))
+            icon_surface.fill(beh.color)
+
+        # Blit icon with border
+        surface.blit(icon_surface, icon_rect.topleft)
+        pygame.draw.rect(surface, Theme.PANEL_BORDER, icon_rect, 1, border_radius=2)
+
+        # Label centered below icon
+        label_font = pygame.font.SysFont(None, 14)
+        name = idef.behavior.display_name
+        if len(name) > 8:
+            name = name[:7] + ".."
+        label_surf = label_font.render(name, True, Theme.TEXT_SECONDARY)
         lw = label_surf.get_width()
-        surface.blit(label_surf, (bx + max(0, (cell_w - lw) // 2), iy + icon_size + 2))
-        # Selection outline
-        if palette_state.get("selected_id") == idef.id:
-            pygame.draw.rect(surface, (250, 250, 255), icon_rect, 2)
+        label_y = icon_rect.bottom + 2
+        surface.blit(label_surf, (cell_rect.x + (cell_rect.w - lw) // 2, label_y))
+
+    # Scrollbar if needed
+    total_rows = (len(items) + cols - 1) // cols
+    if total_rows > visible_rows:
+        scrollbar_h = content_rect.h - 8
+        scrollbar_x = content_rect.right - 6
+        scrollbar_y = content_rect.y + 4
+
+        # Track
+        pygame.draw.rect(surface, Theme.BG_MEDIUM, (scrollbar_x, scrollbar_y, 4, scrollbar_h), border_radius=2)
+
+        # Thumb
+        thumb_h = max(20, scrollbar_h * visible_rows // total_rows)
+        thumb_y = scrollbar_y + (scrollbar_h - thumb_h) * start_row // max(1, total_rows - visible_rows)
+        pygame.draw.rect(surface, Theme.TEXT_DIM, (scrollbar_x, thumb_y, 4, thumb_h), border_radius=2)
+
     # Save hit regions for input
     palette_state["_search_rect"] = search_rect
     palette_state["_title_rect"] = title_rect
@@ -170,16 +345,42 @@ def draw_palette(surface: pygame.Surface, registry, palette_state: dict) -> None
     palette_state["_min_rect"] = min_rect
 
 
-def draw_main_menu(surface: pygame.Surface) -> dict:
+def draw_main_menu(surface: pygame.Surface, mouse_pos: Tuple[int, int] = (0, 0)) -> dict:
     width, height = surface.get_size()
-    title_font = pygame.font.SysFont(None, 48)
+
+    # Fonts
+    title_font = pygame.font.SysFont(None, 72)
+    subtitle_font = pygame.font.SysFont(None, 24)
     btn_font = pygame.font.SysFont(None, 28)
-    title = title_font.render("Dawn", True, (230, 230, 240))
-    surface.blit(title, (width // 2 - title.get_width() // 2, height // 3 - 40))
-    start_rect = pygame.Rect(width // 2 - 80, height // 2, 160, 44)
-    pygame.draw.rect(surface, (70, 70, 90), start_rect)
-    start_txt = btn_font.render("Start", True, (230, 230, 240))
-    surface.blit(start_txt, (start_rect.x + (start_rect.w - start_txt.get_width()) // 2, start_rect.y + 10))
+
+    # Background is drawn by caller (demo world), so no fill here
+
+    # Title with glow effect
+    title_y = height // 3 - 50
+
+    # Glow behind title
+    glow_font = pygame.font.SysFont(None, 76)
+    glow_surf = glow_font.render("Dawn", True, Theme.PRIMARY_DARK)
+    surface.blit(glow_surf, (width // 2 - glow_surf.get_width() // 2 + 2, title_y + 2))
+
+    # Main title
+    title = title_font.render("Dawn", True, Theme.TEXT_PRIMARY)
+    surface.blit(title, (width // 2 - title.get_width() // 2, title_y))
+
+    # Subtitle
+    subtitle = subtitle_font.render("A Falling Sand Sandbox", True, Theme.TEXT_SECONDARY)
+    surface.blit(subtitle, (width // 2 - subtitle.get_width() // 2, title_y + 60))
+
+    # Start button - larger and centered
+    start_rect = pygame.Rect(width // 2 - 100, height // 2 + 20, 200, 50)
+    hovered = start_rect.collidepoint(mouse_pos)
+    draw_button(surface, start_rect, "Play", btn_font, hovered=hovered, style="primary")
+
+    # Version/credits at bottom
+    credits_font = pygame.font.SysFont(None, 18)
+    credits = credits_font.render("v0.1 - A sandbox simulation", True, Theme.TEXT_DIM)
+    surface.blit(credits, (width // 2 - credits.get_width() // 2, height - 30))
+
     return {"start": start_rect}
 
 
@@ -199,88 +400,193 @@ def _scan_slots() -> dict:
     return info
 
 
-def draw_slot_menu(surface: pygame.Surface, selected_slot: int | None = None) -> dict:
+def draw_slot_menu(surface: pygame.Surface, selected_slot: int | None = None, mouse_pos: Tuple[int, int] = (0, 0)) -> dict:
     width, height = surface.get_size()
-    font = pygame.font.SysFont(None, 28)
-    small_font = pygame.font.SysFont(None, 24)
-    title = font.render("Select Save Slot", True, (230, 230, 240))
-    surface.blit(title, (width // 2 - title.get_width() // 2, height // 3 - 60))
+
+    # Fonts
+    title_font = pygame.font.SysFont(None, 36)
+    font = pygame.font.SysFont(None, 24)
+    small_font = pygame.font.SysFont(None, 20)
+    icon_font = pygame.font.SysFont(None, 28)
+
+    # Background is drawn by caller (demo world), so no fill here
+
+    # Title
+    title = title_font.render("Select World", True, Theme.TEXT_PRIMARY)
+    surface.blit(title, (width // 2 - title.get_width() // 2, height // 4 - 40))
+
+    # Subtitle
+    subtitle = small_font.render("Choose a save slot to continue or start fresh", True, Theme.TEXT_SECONDARY)
+    surface.blit(subtitle, (width // 2 - subtitle.get_width() // 2, height // 4))
 
     slots_info = _scan_slots()
     actions = {}
-    paths = _slot_paths()
+
+    # Calculate card dimensions
+    card_width = 320
+    card_height = 70
+    card_spacing = 16
+    start_y = height // 3 + 20
 
     for i in range(1, 4):
-        y = height // 2 - 60 + (i - 1) * 70  # Increased spacing
+        y = start_y + (i - 1) * (card_height + card_spacing)
 
-        # Main slot button
-        rect = pygame.Rect(width // 2 - 160, y, 220, 50)
-        color = (90, 90, 120) if selected_slot == i else (70, 70, 90)
-        pygame.draw.rect(surface, color, rect)
+        # Main card/slot button
+        card_rect = pygame.Rect(width // 2 - card_width // 2, y, card_width, card_height)
+        is_selected = selected_slot == i
+        is_hovered = card_rect.collidepoint(mouse_pos)
 
         info = slots_info[i]
-        label_text = f"Slot {i}"
-        if info["exists"]:
-            label_text += f": {info['name']}"
+        exists = info["exists"]
+
+        # Card background with selection/hover states
+        if is_selected:
+            bg_color = Theme.BG_LIGHT
+            border_color = Theme.PRIMARY
+        elif is_hovered:
+            bg_color = Theme.BG_MEDIUM
+            border_color = Theme.PANEL_BORDER
         else:
-            label_text += " (Empty)"
+            bg_color = Theme.PANEL_BG
+            border_color = Theme.PANEL_BORDER
 
-        # Truncate if too long
-        if len(label_text) > 25:
-             label_text = label_text[:22] + "..."
+        draw_rounded_rect(surface, bg_color, card_rect, radius=10, border=2, border_color=border_color)
 
-        txt = font.render(label_text, True, (230, 230, 240))
-        surface.blit(txt, (rect.x + 12, rect.y + 15))
-        actions[f"select_{i}"] = rect
+        # Slot icon/number on the left
+        icon_rect = pygame.Rect(card_rect.x + 12, card_rect.y + 12, 46, 46)
+        icon_bg = Theme.PRIMARY if exists else Theme.BTN_DEFAULT
+        draw_rounded_rect(surface, icon_bg, icon_rect, radius=8)
 
-        if info["exists"]:
+        slot_num = icon_font.render(str(i), True, Theme.TEXT_PRIMARY)
+        surface.blit(slot_num, (icon_rect.x + (icon_rect.w - slot_num.get_width()) // 2,
+                                icon_rect.y + (icon_rect.h - slot_num.get_height()) // 2))
+
+        # Slot info text
+        text_x = icon_rect.right + 16
+        if exists:
+            name_text = info["name"]
+            if len(name_text) > 18:
+                name_text = name_text[:15] + "..."
+            name_surf = font.render(name_text, True, Theme.TEXT_PRIMARY)
+            surface.blit(name_surf, (text_x, card_rect.y + 16))
+
+            status_surf = small_font.render("Click to load world", True, Theme.TEXT_DIM)
+            surface.blit(status_surf, (text_x, card_rect.y + 40))
+        else:
+            name_surf = font.render("Empty Slot", True, Theme.TEXT_SECONDARY)
+            surface.blit(name_surf, (text_x, card_rect.y + 16))
+
+            status_surf = small_font.render("Click to create new world", True, Theme.TEXT_DIM)
+            surface.blit(status_surf, (text_x, card_rect.y + 40))
+
+        actions[f"select_{i}"] = card_rect
+
+        # Action buttons on the right (only for existing saves)
+        if exists:
+            btn_size = 36
+            btn_y = card_rect.y + (card_height - btn_size) // 2
+
             # Rename button
-            ren_rect = pygame.Rect(rect.right + 10, y, 60, 50)
-            pygame.draw.rect(surface, (60, 100, 150), ren_rect)
-            ren_txt = small_font.render("Name", True, (255, 255, 255))
-            surface.blit(ren_txt, (ren_rect.x + (ren_rect.w - ren_txt.get_width()) // 2, ren_rect.y + 17))
+            ren_rect = pygame.Rect(card_rect.right - btn_size * 2 - 20, btn_y, btn_size, btn_size)
+            ren_hovered = ren_rect.collidepoint(mouse_pos)
+            ren_bg = Theme.SECONDARY_HOVER if ren_hovered else Theme.SECONDARY
+            draw_rounded_rect(surface, ren_bg, ren_rect, radius=6)
+            # Pencil icon (simple lines)
+            pygame.draw.line(surface, Theme.TEXT_PRIMARY, (ren_rect.x + 10, ren_rect.y + 24),
+                           (ren_rect.x + 24, ren_rect.y + 10), 2)
+            pygame.draw.line(surface, Theme.TEXT_PRIMARY, (ren_rect.x + 10, ren_rect.y + 26),
+                           (ren_rect.x + 10, ren_rect.y + 24), 2)
             actions[f"rename_{i}"] = ren_rect
 
             # Delete button
-            del_rect = pygame.Rect(ren_rect.right + 10, y, 40, 50)
-            pygame.draw.rect(surface, (150, 60, 60), del_rect)
-            del_txt = small_font.render("X", True, (255, 255, 255))
-            surface.blit(del_txt, (del_rect.x + (del_rect.w - del_txt.get_width()) // 2, del_rect.y + 17))
+            del_rect = pygame.Rect(card_rect.right - btn_size - 10, btn_y, btn_size, btn_size)
+            del_hovered = del_rect.collidepoint(mouse_pos)
+            del_bg = Theme.DANGER_HOVER if del_hovered else Theme.DANGER
+            draw_rounded_rect(surface, del_bg, del_rect, radius=6)
+            # X icon
+            pygame.draw.line(surface, Theme.TEXT_PRIMARY, (del_rect.x + 10, del_rect.y + 10),
+                           (del_rect.x + 26, del_rect.y + 26), 2)
+            pygame.draw.line(surface, Theme.TEXT_PRIMARY, (del_rect.x + 26, del_rect.y + 10),
+                           (del_rect.x + 10, del_rect.y + 26), 2)
             actions[f"delete_{i}"] = del_rect
+
+    # Back button at bottom
+    back_rect = pygame.Rect(width // 2 - 60, height - 80, 120, 40)
+    back_hovered = back_rect.collidepoint(mouse_pos)
+    draw_button(surface, back_rect, "Back", font, hovered=back_hovered)
+    actions["back"] = back_rect
 
     return actions
 
 
 def draw_input_dialog(surface: pygame.Surface, prompt: str, current_text: str) -> None:
     width, height = surface.get_size()
-    # Overlay
-    s = pygame.Surface((width, height))
-    s.set_alpha(200)
-    s.fill((0, 0, 0))
-    surface.blit(s, (0, 0))
 
-    # Dialog box
-    box_w, box_h = 400, 140
+    # Semi-transparent overlay
+    overlay = pygame.Surface((width, height), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 180))
+    surface.blit(overlay, (0, 0))
+
+    # Dialog box with shadow
+    box_w, box_h = 380, 160
     box_x, box_y = (width - box_w) // 2, (height - box_h) // 2
-    pygame.draw.rect(surface, (50, 50, 60), (box_x, box_y, box_w, box_h))
-    pygame.draw.rect(surface, (100, 100, 120), (box_x, box_y, box_w, box_h), 2)
+    box_rect = pygame.Rect(box_x, box_y, box_w, box_h)
 
-    font = pygame.font.SysFont(None, 24)
+    # Shadow
+    shadow_rect = pygame.Rect(box_x + 4, box_y + 4, box_w, box_h)
+    pygame.draw.rect(surface, (0, 0, 0), shadow_rect, border_radius=12)
+
+    # Main dialog
+    draw_rounded_rect(surface, Theme.PANEL_BG, box_rect, radius=12, border=2, border_color=Theme.PRIMARY)
+
     # Title
-    t_surf = font.render(prompt, True, (230, 230, 240))
-    surface.blit(t_surf, (box_x + 10, box_y + 10))
+    title_font = pygame.font.SysFont(None, 28)
+    t_surf = title_font.render(prompt, True, Theme.TEXT_PRIMARY)
+    surface.blit(t_surf, (box_x + (box_w - t_surf.get_width()) // 2, box_y + 20))
 
     # Input field
-    input_rect = pygame.Rect(box_x + 20, box_y + 50, box_w - 40, 40)
-    pygame.draw.rect(surface, (30, 30, 35), input_rect)
-    pygame.draw.rect(surface, (200, 200, 220), input_rect, 1)
+    input_rect = pygame.Rect(box_x + 24, box_y + 60, box_w - 48, 44)
+    draw_rounded_rect(surface, Theme.INPUT_BG, input_rect, radius=8, border=2, border_color=Theme.INPUT_FOCUS)
 
-    i_surf = font.render(current_text, True, (255, 255, 255))
-    surface.blit(i_surf, (input_rect.x + 5, input_rect.y + 12))
+    # Text with cursor
+    font = pygame.font.SysFont(None, 24)
+    display_text = current_text + "|"  # Blinking cursor effect
+    i_surf = font.render(display_text, True, Theme.TEXT_PRIMARY)
+    surface.blit(i_surf, (input_rect.x + 12, input_rect.y + 12))
 
-    # Instruction
-    inst_surf = pygame.font.SysFont(None, 18).render("Press ENTER to confirm, ESC to cancel", True, (150, 150, 160))
-    surface.blit(inst_surf, (box_x + 20, box_y + 100))
+    # Instructions
+    inst_font = pygame.font.SysFont(None, 18)
+    inst_surf = inst_font.render("ENTER to confirm  |  ESC to cancel", True, Theme.TEXT_DIM)
+    surface.blit(inst_surf, (box_x + (box_w - inst_surf.get_width()) // 2, box_y + 120))
+
+
+def draw_game_hud(surface: pygame.Surface, world, palette_visible: bool, mouse_pos: Tuple[int, int] = (0, 0)) -> dict:
+    """Draw the in-game HUD with menu button and world name."""
+    actions = {}
+    width = surface.get_width()
+
+    # Top bar background (semi-transparent)
+    bar_surface = pygame.Surface((width, 36), pygame.SRCALPHA)
+    bar_surface.fill((18, 18, 24, 200))
+    surface.blit(bar_surface, (0, 0))
+
+    # Subtle bottom border
+    pygame.draw.line(surface, Theme.PANEL_BORDER, (0, 35), (width, 35), 1)
+
+    font = pygame.font.SysFont(None, 18)
+    small_font = pygame.font.SysFont(None, 16)
+
+    # World name (left side)
+    name_surf = font.render(world.name, True, Theme.TEXT_PRIMARY)
+    surface.blit(name_surf, (12, 10))
+
+    # Menu button (right side)
+    menu_btn = pygame.Rect(width - 78, 6, 70, 24)
+    menu_hovered = menu_btn.collidepoint(mouse_pos)
+    draw_button(surface, menu_btn, "Menu", small_font, hovered=menu_hovered)
+    actions["menu"] = menu_btn
+
+    return actions
 
 
 def palette_hit_test(palette_state: dict, pos: Tuple[int, int]) -> str | None:
@@ -304,14 +610,20 @@ def palette_click_select(registry, palette_state: dict, pos: Tuple[int, int]) ->
     content_rect = palette_state.get("_content_rect")
     if not content_rect or not content_rect.collidepoint(*pos):
         return
-    grid_pad = 6
+    grid_pad = 8
     q = (palette_state.get("search", "") or "").lower().strip()
-    items = [i for i in registry.all_items() if (q in i.behavior.display_name.lower() or q in i.key)]
-    cell_w = 56
-    cell_h = 68
-    cols = max(1, (content_rect.w - grid_pad) // cell_w)
+    if q:
+        items = [i for i in registry.all_items()
+                 if q in i.key.lower()
+                 or q in i.behavior.display_name.lower()
+                 or q in getattr(i.behavior, 'name', '').lower()]
+    else:
+        items = list(registry.all_items())
+    cell_w = 60
+    cell_h = 72
+    cols = max(1, (content_rect.w - grid_pad * 2) // cell_w)
     start_row = palette_state.get("scroll", 0)
-    visible_rows = max(1, (content_rect.h - grid_pad) // cell_h)
+    visible_rows = max(1, (content_rect.h - grid_pad * 2) // cell_h)
     first = start_row * cols
     last = min(len(items), first + visible_rows * cols)
     x, y = pos
@@ -327,13 +639,13 @@ def palette_click_select(registry, palette_state: dict, pos: Tuple[int, int]) ->
         palette_state["selected_id"] = idef.id
 
 
-def ui_hit_world(surface: pygame.Surface, pos, ui_height: int, palette_state: dict | None = None) -> bool:
-    # not over palette or toggle icon
-    if palette_state and palette_state.get("visible") and palette_state.get("rect") and palette_state["rect"].collidepoint(*pos):
+def ui_hit_world(surface: pygame.Surface, pos, ui_height: int, palette_state: dict | None = None, hud_actions: dict | None = None) -> bool:
+    x, y = pos
+    # Not over HUD bar at top (36 pixels)
+    if y < 36:
         return False
-    # Toggle icon area
-    togg = pygame.Rect(8, 8, 20, 20)
-    if togg.collidepoint(*pos):
+    # Not over palette
+    if palette_state and palette_state.get("visible") and palette_state.get("rect") and palette_state["rect"].collidepoint(*pos):
         return False
     return True
 
@@ -640,9 +952,19 @@ def main() -> None:
     # Create surface with no reserved bottom UI
     ui_height = 0
     surface = create_surface(world, ui_height)
-    # Palette UI state
+
+    # Demo world for menu background - uses its own registry to avoid interference
+    demo_registry = Registry()
+    register_all(demo_registry)
+    demo_world = World(120, 80, demo_registry)
+    demo_world.set_ambient_preset("Mild")
+    demo_spawn_timer = 0
+    # Materials to randomly spawn in demo (interesting visual ones)
+    demo_materials = ["sand", "water", "dirt", "snow", "rock", "seed", "seed_oak", "seed_cherry"]
+
+    # Palette UI state - positioned below the HUD bar
     palette_state = {
-        "rect": pygame.Rect(20, 20, 260, 300),
+        "rect": pygame.Rect(20, 46, 280, 340),
         "search": "",
         "dragging": False,
         "resizing": False,
@@ -652,6 +974,9 @@ def main() -> None:
         "selected_id": registry.all_items()[0].id if registry.all_items() else None,
         "visible": True,
     }
+
+    # HUD actions cache
+    hud_actions = {}
 
     # Fixed time scale
     world.set_time_scale(1.0)
@@ -678,45 +1003,85 @@ def main() -> None:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = pygame.mouse.get_pos()
                 if app_state == "menu":
-                    btns = draw_main_menu(surface)
+                    btns = draw_main_menu(surface, (mx, my))
                     if btns["start"].collidepoint(mx, my):
                         app_state = "slots"
                     continue
                 if app_state == "slots":
-                    slot_buttons = draw_slot_menu(surface, selected_slot)
+                    # Re-scan slots to ensure UI is up-to-date
+                    slot_buttons = draw_slot_menu(surface, selected_slot, (mx, my))
+
+                    # Check buttons in priority order: back, delete, rename, then select
+                    # This prevents delete/rename clicks from also triggering select
+                    clicked_action = None
                     for action, rect in slot_buttons.items():
                         if rect.collidepoint(mx, my):
-                            if action.startswith("select_"):
-                                slot_id = int(action.split("_")[1])
-                                selected_slot = slot_id
-                                path = _slot_paths()[slot_id]
-                                if os.path.exists(path):
-                                    world.load_from_path(path)
-                                    app_state = "playing"
-                                else:
-                                    # New empty slot, prompt for name
-                                    renaming_slot = slot_id
-                                    input_text = ""
-                                    app_state = "renaming"
-                            elif action.startswith("delete_"):
-                                slot_id = int(action.split("_")[1])
-                                path = _slot_paths()[slot_id]
-                                if os.path.exists(path):
-                                    os.remove(path)
-                                    if selected_slot == slot_id:
-                                        selected_slot = None
-                            elif action.startswith("rename_"):
-                                slot_id = int(action.split("_")[1])
+                            # Prioritize more specific actions over select
+                            if action == "back":
+                                clicked_action = action
+                                break
+                            elif action.startswith("delete_") or action.startswith("rename_"):
+                                clicked_action = action
+                                break
+                            elif action.startswith("select_") and clicked_action is None:
+                                clicked_action = action
+
+                    if clicked_action:
+                        if clicked_action == "back":
+                            app_state = "menu"
+                        elif clicked_action.startswith("select_"):
+                            slot_id = int(clicked_action.split("_")[1])
+                            selected_slot = slot_id
+                            path = _slot_paths()[slot_id]
+                            if os.path.exists(path):
+                                world.load_from_path(path)
+                                app_state = "playing"
+                            else:
+                                # New empty slot - reset world first, then prompt for name
+                                world = World(120, 80, registry)
+                                world.set_ambient_preset("Mild")
+                                world.set_time_scale(1.0)
                                 renaming_slot = slot_id
-                                paths = _slot_paths()
-                                try:
-                                    with open(paths[slot_id], "r") as f:
-                                        data = json.load(f)
-                                        input_text = data.get("name", "")
-                                except Exception:
-                                    input_text = ""
+                                input_text = ""
                                 app_state = "renaming"
+                        elif clicked_action.startswith("delete_"):
+                            slot_id = int(clicked_action.split("_")[1])
+                            path = _slot_paths()[slot_id]
+                            if os.path.exists(path):
+                                os.remove(path)
+                                if selected_slot == slot_id:
+                                    selected_slot = None
+                        elif clicked_action.startswith("rename_"):
+                            slot_id = int(clicked_action.split("_")[1])
+                            renaming_slot = slot_id
+                            paths = _slot_paths()
+                            try:
+                                with open(paths[slot_id], "r") as f:
+                                    data = json.load(f)
+                                    input_text = data.get("name", "")
+                            except Exception:
+                                input_text = ""
+                            app_state = "renaming"
                     continue
+
+                # Game state - check HUD buttons first
+                if app_state == "playing":
+                    # Check HUD menu button
+                    if hud_actions.get("menu") and hud_actions["menu"].collidepoint(mx, my):
+                        # Save current world before going to menu
+                        if selected_slot:
+                            paths = _slot_paths()
+                            world.save_to_path(paths[selected_slot])
+                        app_state = "slots"
+                        continue
+
+                    # Check floating palette toggle button (when palette is hidden)
+                    if not palette_state["visible"]:
+                        toggle_rect = palette_state.get("_toggle_rect")
+                        if toggle_rect and toggle_rect.collidepoint(mx, my):
+                            palette_state["visible"] = True
+                            continue
+
                 if palette_state["visible"]:
                     hit = palette_hit_test(palette_state, (mx, my))
                     if hit:
@@ -733,13 +1098,7 @@ def main() -> None:
                             palette_state["input_active"] = True
                         elif hit == "content":
                             palette_click_select(registry, palette_state, (mx, my))
-                    continue
-                else:
-                    # Check toggle icon in corner
-                    togg = pygame.Rect(8, 8, 20, 20)
-                    if togg.collidepoint(mx, my):
-                        palette_state["visible"] = True
-                    continue
+                        continue
                 # World placement
                 if event.button == 2:
                     # Middle-click eyedropper
@@ -857,29 +1216,76 @@ def main() -> None:
                         if world.get_cell(bx, by):
                             world.set_item(bx, by, 0)
 
+        # Get current mouse position for hover effects
+        mx, my = pygame.mouse.get_pos()
+
+        # Update demo world for menu backgrounds
+        if app_state in ("menu", "slots", "renaming"):
+            # Simulate demo world
+            demo_world.tick()
+
+            # Randomly spawn materials from the top
+            demo_spawn_timer += 1
+            if demo_spawn_timer >= 3:  # Every 3 frames
+                demo_spawn_timer = 0
+                # Spawn a few blocks at random x positions near top
+                for _ in range(random.randint(1, 3)):
+                    spawn_x = random.randint(0, demo_world.width - 1)
+                    spawn_y = random.randint(0, 3)
+                    mat_key = random.choice(demo_materials)
+                    mat = demo_registry.get_by_key(mat_key)
+                    if mat:
+                        cell = demo_world.get_cell(spawn_x, spawn_y)
+                        if cell and cell.item_id == 0:
+                            demo_world.set_item(spawn_x, spawn_y, mat.id)
+
         if app_state == "menu":
-            surface.fill((20, 20, 24))
-            draw_main_menu(surface)
+            # Draw demo world as background
+            draw_world(surface, demo_world, demo_registry)
+            # Darken overlay for readability
+            overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            overlay.fill((18, 18, 24, 180))
+            surface.blit(overlay, (0, 0))
+            draw_main_menu(surface, (mx, my))
         elif app_state == "slots":
-            surface.fill((20, 20, 24))
-            draw_slot_menu(surface, selected_slot)
+            # Draw demo world as background
+            draw_world(surface, demo_world, demo_registry)
+            overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            overlay.fill((18, 18, 24, 180))
+            surface.blit(overlay, (0, 0))
+            draw_slot_menu(surface, selected_slot, (mx, my))
         elif app_state == "renaming":
-            surface.fill((20, 20, 24))
-            # Draw slot menu in background
-            draw_slot_menu(surface, selected_slot)
+            # Draw demo world as background
+            draw_world(surface, demo_world, demo_registry)
+            overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            overlay.fill((18, 18, 24, 180))
+            surface.blit(overlay, (0, 0))
+            draw_slot_menu(surface, selected_slot, (mx, my))
             draw_input_dialog(surface, f"Name Slot {renaming_slot}", input_text)
         else:
+            # Playing state
             draw_world(surface, world, registry)
+
+            # Draw HUD at top
+            hud_actions = draw_game_hud(surface, world, palette_state["visible"], (mx, my))
+
+            # Draw palette if visible, otherwise show floating toggle button
             if palette_state["visible"]:
-                draw_palette(surface, registry, palette_state)
+                draw_palette(surface, registry, palette_state, (mx, my))
             else:
-                # Draw toggle icon
-                togg = pygame.Rect(8, 8, 20, 20)
-                pygame.draw.rect(surface, (60, 60, 72), togg)
-                pygame.draw.rect(surface, (120, 120, 140), togg, 2)
-                dots = [(togg.x + 6, togg.y + 6), (togg.x + 10, togg.y + 6), (togg.x + 14, togg.y + 6)]
-                for (dx, dy) in dots:
-                    pygame.draw.circle(surface, (220, 220, 230), (dx, dy), 1)
+                # Floating toggle button to show palette
+                toggle_rect = pygame.Rect(12, 46, 36, 36)
+                toggle_hovered = toggle_rect.collidepoint(mx, my)
+                toggle_bg = Theme.BTN_HOVER if toggle_hovered else Theme.PANEL_BG
+                draw_rounded_rect(surface, toggle_bg, toggle_rect, radius=8, border=2, border_color=Theme.PANEL_BORDER)
+                # Draw grid dots icon (3x3)
+                for row in range(3):
+                    for col in range(3):
+                        dot_x = toggle_rect.x + 10 + col * 8
+                        dot_y = toggle_rect.y + 10 + row * 8
+                        pygame.draw.circle(surface, Theme.TEXT_SECONDARY, (dot_x, dot_y), 2)
+                palette_state["_toggle_rect"] = toggle_rect
+
         pygame.display.flip()
         clock.tick(60)
 

@@ -1,7 +1,7 @@
 SPEC = {'id': 'wood',
  'type': 'solid',
  'density': 1.2,
- 'support': 3,
+ 'support': 1,
  'palette': [(110, 78, 48), (130, 90, 60)],
  'pattern': [[0, 1, 0, 1, 0, 1, 0, 1],
              [0, 1, 0, 1, 0, 1, 0, 1],

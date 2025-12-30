@@ -1,7 +1,7 @@
 SPEC = {'id': 'wood_cherry',
  'type': 'solid',
  'density': 1.2,
- 'support': 3,
+ 'support': 1,
  'palette': [(140, 70, 70), (160, 90, 90)],
  'pattern': [[0, 1, 0, 1, 0, 1, 0, 1],
              [0, 1, 0, 1, 0, 1, 0, 1],

@@ -1,7 +1,7 @@
 SPEC = {'id': 'wood_oak',
  'type': 'solid',
  'density': 1.2,
- 'support': 3,
+ 'support': 1,
  'palette': [(120, 84, 54), (140, 100, 70)],
  'pattern': [[1, 0, 1, 0, 1, 0, 1, 0],
              [1, 0, 1, 0, 1, 0, 1, 0],
